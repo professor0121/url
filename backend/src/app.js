@@ -2,7 +2,7 @@ import express from "express";
 import  connetDB from "./config/connectDb.js"
 import shortUrlRoutes from "./routes/shortUrl.routes.js"
 import {redirectFromShortUrl} from "./controllers/shortUrl.controller.js"
-import UrlSchema from "./models/shortUrl.model.js"
+import { errorHandler } from "./utils/errorHandler.js";
 
 
 
@@ -15,14 +15,5 @@ app.use(express.urlencoded({extended:true}))
 app.use("/api/url", shortUrlRoutes);
 app.get("/:id",redirectFromShortUrl)
 
-// app.get("/:urlId", async (req,res)=>{
-//   const {urlId}=req.params;
-//   console.log(urlId);
-//   const url=await UrlSchema.findOne({short_url:urlId})
-//   if(url){
-//     res.redirect(url.full_url)
-//   }else{
-//     res.status(400).json({message:"url not found"})
-//   }
-// })
+app.use(errorHandler)
 export default app;

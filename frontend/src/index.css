@@ -1,0 +1,7 @@
+@import "tailwindcss";
+:root {
+  --clr-main: #819A91;
+  --clr-soft: #A7C1A8;
+  --clr-light: #D1D8BE;
+  --clr-bg: #EEEFE0;
+}
