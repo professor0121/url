@@ -4,6 +4,7 @@ import TipSection from '../components/TipSection'
 import GettingStartedSection from '../components/GettingStartedSection'
 import PagesSection from '../components/PageSection'
 import CustomLinksSection from '../components/CustomLinksSection'
+import UrlForm from '../components/UrlForm'
 const Home = () => {
      const [url, setUrl] = useState('');
       const [showTip, setShowTip] = useState(true);
@@ -37,6 +38,7 @@ const Home = () => {
           </div>
         </div>
       </div>
+      <UrlForm/>
     </div>
   )
 }

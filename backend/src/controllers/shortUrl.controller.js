@@ -8,9 +8,12 @@ export const createShortUrl = wrapAsync(async (req, res) => {
         res.send(process.env.APP_URL + "" + shortUrl)
 })
 
-export const redirectFromShortUrl =wrapAsync(async (req, res) => {
-        const { id } = await req.params;
+export const redirectFromShortUrl = wrapAsync(async (req, res) => {
+        const { id } = req.params;
         const url = await getShortUrl(id);
-        res.redirect(url.full_url)
+        const urlToRedirect = url.full_url.startsWith('http')
+                ? url.full_url
+                : `http://${url.full_url}`;
 
+        res.redirect(urlToRedirect);
 })
