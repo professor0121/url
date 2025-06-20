@@ -116,29 +116,300 @@ Complete URL shortening interface with results display.
 ### Redux Store Structure
 
 ```javascript
+// Root Reducer combines all feature slices
 {
   auth: {
-    user: null,
-    isAuthenticated: false,
-    loading: false,
-    error: null
+    isAuth: boolean,
+    user: User | null,
+    token: string | null,
+    status: 'idle' | 'loading' | 'succeeded' | 'failed',
+    error: string | null
   },
-  urls: {
-    userUrls: [],
-    currentUrl: null,
-    loading: false,
-    error: null
+  url: {
+    originalUrl: string,
+    shortUrl: string | null,
+    loading: boolean,
+    error: string | null
   }
 }
 ```
 
-### Key Actions
+### Redux Implementation
 
-- `login()`: Authenticate user
-- `logout()`: Clear user session
-- `createShortUrl()`: Generate shortened URL
-- `fetchUserUrls()`: Get user's URLs
-- `updateUrlStats()`: Update click statistics
+#### Store Configuration
+```javascript
+// store.js
+import { configureStore } from '@reduxjs/toolkit';
+import rootReducer from './rootReducer';
+
+export const store = configureStore({
+  reducer: rootReducer,
+});
+
+// rootReducer.js
+import { combineReducers } from '@reduxjs/toolkit';
+import urlReducer from './features/url/urlSlice';
+import authReducer from './features/auth/authSlice';
+
+const rootReducer = combineReducers({
+  url: urlReducer,
+  auth: authReducer,
+});
+```
+
+#### Auth Slice Implementation
+```javascript
+// authSlice.js
+const initialState = {
+  isAuth: false,
+  user: null,
+  token: null,
+  status: "idle",
+  error: null,
+};
+
+const authSlice = createSlice({
+  name: "auth",
+  initialState,
+  reducers: {
+    logout(state) {
+      state.isAuth = false;
+      state.user = null;
+      state.token = null;
+      state.status = "idle";
+      state.error = null;
+      localStorage.removeItem("token");
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loginThunk.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(loginThunk.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.isAuth = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        localStorage.setItem("token", action.payload.token);
+      })
+      .addCase(loginThunk.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      });
+  },
+});
+```
+
+### Async Thunks
+
+#### Authentication Thunks
+```javascript
+// loginThunk
+export const loginThunk = createAsyncThunk(
+  "auth/login",
+  async (credentials, thunkAPI) => {
+    try {
+      const res = await axios.post("/api/auth/login", credentials);
+      return res.data; // { user, token }
+    } catch (err) {
+      const message = err.response?.data?.message || "Login failed. Try again.";
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// registerThunk
+export const registerThunk = createAsyncThunk(
+  "auth/register",
+  async (formData, thunkAPI) => {
+    try {
+      const res = await axios.post("/api/auth/register", formData);
+      return res.data;
+    } catch (err) {
+      const message = err.response?.data?.message || "Registration failed.";
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// getProfileThunk
+export const getProfileThunk = createAsyncThunk(
+  "auth/getProfile",
+  async (_, thunkAPI) => {
+    try {
+      const res = await axios.get("/api/auth/me", {
+        withCredentials: true,
+      });
+      return res.data.user;
+    } catch (err) {
+      const message = err.response?.data?.message || "Failed to fetch profile.";
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+```
+
+#### URL Shortening Thunks
+```javascript
+// createShortUrl
+export const createShortUrl = createAsyncThunk(
+  'url/createShortUrl',
+  async (originalUrl, { rejectWithValue }) => {
+    try {
+      const res = await axios.post('/api/url/create', { url: originalUrl });
+      return {
+        originalUrl,
+        shortUrl: res.data,
+      };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Shortening failed');
+    }
+  }
+);
+
+// redirectShortUrl
+export const redirectShortUrl = createAsyncThunk(
+  'url/redirectShortUrl',
+  async (shortId, { rejectWithValue }) => {
+    try {
+      const res = await axios.get(`/${shortId}`);
+      return {
+        shortUrl: shortId,
+        originalUrl: res.data.originalUrl,
+      };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Redirection failed');
+    }
+  }
+);
+```
+
+### Component Integration
+
+#### Using Redux in Components
+```javascript
+// Header.jsx - Complete Redux integration example
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getProfileThunk } from "../redux/features/auth/authThunks";
+import { Search, HelpCircle, ChevronUp } from "lucide-react";
+
+const Header = () => {
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+  const status = useSelector((state) => state.auth.status);
+
+  useEffect(() => {
+    dispatch(getProfileThunk());
+  }, [dispatch]);
+
+  return (
+    <header className="fixed w-full bg-white border-b border-gray-200 px-6 py-4 z-50">
+      <div className="flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center space-x-4">
+          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-lg">b</span>
+          </div>
+        </div>
+
+        {/* Right side - Search, Upgrade, Help, Profile */}
+        <div className="flex items-center space-x-4">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+            />
+          </div>
+
+          {/* Upgrade Button */}
+          <button className="bg-teal-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-teal-700 transition-colors">
+            Upgrade
+          </button>
+
+          {/* Help Icon */}
+          <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
+            <HelpCircle className="text-gray-400 cursor-pointer hover:text-gray-600" size={24} />
+          </div>
+
+          {/* User Avatar */}
+          <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center">
+            <span className="text-white text-sm font-medium">
+              {user?.name?.[0]?.toUpperCase() || "A"}
+            </span>
+          </div>
+
+          {/* User Name */}
+          <span className="text-gray-700 font-medium whitespace-nowrap">
+            {status === "loading" ? "Loading..." : user?.name || "Guest"}
+          </span>
+          <ChevronUp className="text-gray-400" size={16} />
+        </div>
+      </div>
+    </header>
+  );
+};
+```
+
+#### Authentication Flow in Components
+```javascript
+// Auth.jsx - Authentication component with Redux
+import { useState } from 'react';
+import { useDispatch, useSelector } from "react-redux";
+import { loginThunk, registerThunk } from "../redux/features/auth/authThunks";
+import { useNavigate } from "react-router-dom";
+
+export default function AuthComponent({ isAuth, setIsAuth }) {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const dispatch = useDispatch();
+  const status = useSelector((state) => state.auth.status);
+  const error = useSelector((state) => state.auth.error);
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: ""
+  });
+
+  const handleLogin = () => {
+    dispatch(loginThunk({ email: formData.email, password: formData.password }))
+      .unwrap()
+      .then(() => {
+        setIsAuth(true);
+        navigate("/");
+      })
+      .catch((err) => {
+        console.error("Login failed:", err);
+      });
+  };
+
+  const handleRegister = () => {
+    dispatch(registerThunk(formData))
+      .unwrap()
+      .then(() => {
+        setIsAuth(true);
+        navigate("/");
+      })
+      .catch((err) => {
+        console.error("Registration failed:", err);
+      });
+  };
+
+  return (
+    <div className="auth-container">
+      {/* Form UI */}
+      {status === "loading" && <div>Loading...</div>}
+      {error && <div className="error">{error}</div>}
+    </div>
+  );
+}
+```
 
 ## Routing
 

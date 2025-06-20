@@ -171,19 +171,80 @@ backend/src/
 // Register new user
 export const register = async (name, email, password) => {
   // 1. Check if user exists
-  // 2. Hash password
-  // 3. Create user
-  // 4. Generate JWT token
-  // 5. Return token and user data
-}
+  const user = await findUserByEmail(email);
+  if (user) {
+    throw new ConflictError("User already exists");
+  }
+
+  // 2. Create user (password hashing handled in DAO)
+  const newUser = await createUser(name, email, password);
+
+  // 3. Generate JWT token
+  const token = signToken({ id: newUser._id });
+
+  // 4. Return token and user data
+  return { token, newUser };
+};
 
 // Login existing user
 export const login = async (email, password) => {
-  // 1. Find user by email
+  // 1. Find user by email with password
+  const user = await findUserByEmailByPassword(email);
+  if (!user) {
+    throw new UnauthorizedError("Invalid credentials");
+  }
+
   // 2. Compare passwords
+  const isValidPassword = await user.comparePassword(password);
+  if (!isValidPassword) {
+    throw new UnauthorizedError("Invalid credentials");
+  }
+
   // 3. Generate JWT token
+  const token = signToken({ id: user._id });
+
   // 4. Return token and user data
-}
+  return { user, token };
+};
+```
+
+### Authentication Controllers
+
+```javascript
+// Register User Controller
+export const registerUser = wrapAsync(async (req, res) => {
+  const { name, email, password } = req.body;
+  const { token, newUser } = await register(name, email, password);
+
+  // Set HTTP-only cookie
+  res.cookie("accessToken", token, cookieOptions);
+  res.status(200).json({ token: token, user: newUser });
+});
+
+// Login User Controller
+export const loginUser = wrapAsync(async (req, res) => {
+  const { email, password } = req.body;
+  const { user, token } = await login(email, password);
+
+  req.user = user;
+  res.cookie("accessToken", token, cookieOptions);
+  res.status(200).json({ token: token, user: user });
+});
+
+// Get Current User Controller
+export const getMe = wrapAsync(async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  res.json({ user: decoded });
+});
+
+// Logout User Controller
+export const logOutUser = wrapAsync(async (req, res) => {
+  res.clearCookie("accessToken", cookieOptions);
+  res.status(200).json({ message: "Logged out successfully" });
+});
 ```
 
 ### URL Shortening Service

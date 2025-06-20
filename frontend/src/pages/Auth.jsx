@@ -1,20 +1,41 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, Facebook, Chrome } from 'lucide-react';
 import { useDispatch, useSelector } from "react-redux";
-import { loginThunk } from "../redux/features/auth/authThunks.js";
+import { loginThunk, registerThunk } from "../redux/features/auth/authThunks.js";
+import { useNavigate } from "react-router-dom";
 
-export default function AuthComponent() {
-    const [isSignUp, setIsSignUp] = useState(false);
-    const dispatch = useDispatch();
-    const status = useSelector((state) => state.auth.status);
-    const error = useSelector((state) => state.auth.error);
-
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+export default function AuthComponent({ isAuth, setIsAuth }) {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const dispatch = useDispatch();
+  const status = useSelector((state) => state.auth.status);
+  const error = useSelector((state) => state.auth.error);
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
     const toggleMode = () => {
         setIsSignUp(!isSignUp);
+    };
+  const handleLogin = () => {
+    dispatch(loginThunk({ email, password }))
+      .unwrap()
+      .then(() => {
+        setIsAuth(true); // ✅ mark as authenticated
+        navigate("/"); // ✅ navigate after login
+      })
+      .catch((err) => {
+        console.error("Login failed:", err);
+      });
+  };
+
+
+    const handleRegister = () => {
+        console.log(name,email,password)
+        dispatch(registerThunk({ name, email, password }));
+        setName("")
+        setEmail("")
+        setPassword("")
     };
 
     return (
@@ -98,7 +119,7 @@ export default function AuthComponent() {
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                                 <input
-                                    onChange={setEmail(e.target.value)}
+                                    onChange={(e)=>setEmail(e.target.value)}
                                     type="email"
                                     placeholder="Email"
                                     className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-gray-50 text-sm"
@@ -124,7 +145,9 @@ export default function AuthComponent() {
                             </div>
 
                             {/* Submit Button */}
-                            <button className="w-full bg-teal-500 text-white py-3 rounded-lg font-semibold hover:bg-teal-600 transition-colors duration-300 transform hover:scale-105 text-sm">
+                            <button 
+                            onClick={handleLogin}
+                            className="w-full bg-teal-500 text-white py-3 rounded-lg font-semibold hover:bg-teal-600 transition-colors duration-300 transform hover:scale-105 text-sm">
                                 SIGN IN
                             </button>
                         </div>
@@ -200,7 +223,9 @@ export default function AuthComponent() {
                             </div>
 
                             {/* Submit Button */}
-                            <button className="w-full bg-teal-500 text-white py-3 rounded-lg font-semibold hover:bg-teal-600 transition-colors duration-300 transform hover:scale-105 text-sm">
+                            <button 
+                            onClick={handleRegister}
+                            className="w-full bg-teal-500 text-white py-3 rounded-lg font-semibold hover:bg-teal-600 transition-colors duration-300 transform hover:scale-105 text-sm">
                                 SIGN UP
                             </button>
                         </div>
@@ -339,7 +364,9 @@ export default function AuthComponent() {
                             )}
 
                             {/* Submit Button */}
-                            <button className="w-full bg-teal-500 text-white py-4 rounded-lg font-semibold hover:bg-teal-600 transition-colors duration-300 transform hover:scale-105 text-base">
+                            <button 
+                            
+                            className="w-full bg-teal-500 text-white py-4 rounded-lg font-semibold hover:bg-teal-600 transition-colors duration-300 transform hover:scale-105 text-base">
                                 {isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
                             </button>
                         </div>

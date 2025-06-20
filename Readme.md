@@ -282,6 +282,8 @@ This project is licensed under the ISC License.
 - Custom slug functionality is commented out and needs implementation
 - Test suite needs to be implemented
 - Analytics features are in development
+- Header search functionality is UI-only (backend integration needed)
+- Profile fetching happens on every header render (optimization needed)
 
 ## 🔮 Future Enhancements
 

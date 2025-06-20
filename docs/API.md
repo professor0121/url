@@ -90,15 +90,22 @@ Cookie: accessToken=<jwt-token>
 **Response (200):**
 ```json
 {
-  "_id": "64f8a1b2c3d4e5f6a7b8c9d0",
-  "name": "John Doe",
-  "email": "john@example.com",
-  "avatar": "https://www.gravatar.com/avatar/..."
+  "user": {
+    "_id": "64f8a1b2c3d4e5f6a7b8c9d0",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "avatar": "https://www.gravatar.com/avatar/..."
+  }
 }
 ```
 
 **Error Responses:**
 - `401 Unauthorized`: Invalid or missing token
+
+**Implementation Details:**
+- Uses JWT token from HTTP-only cookie
+- Token is verified using `jwt.verify()`
+- Returns user data from token payload
 
 ---
 
@@ -111,6 +118,11 @@ Logout the current user (clears the authentication cookie).
   "message": "Logged out successfully"
 }
 ```
+
+**Implementation Details:**
+- Clears the `accessToken` HTTP-only cookie
+- Uses `res.clearCookie()` with same options as when setting
+- No request body required
 
 ### URL Shortening Routes (`/api/url`)
 
