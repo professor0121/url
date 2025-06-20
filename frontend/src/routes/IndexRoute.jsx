@@ -12,7 +12,6 @@ import Settings from "../pages/Settings";
 
 function IndexRoute() {
   return (
-    <Routes>
       <Route path="/" element={<MainLayout />}>
         <Route index element={<Home />} />
         <Route path="about" element={<About />} />
@@ -24,7 +23,6 @@ function IndexRoute() {
         <Route path="domains" element={<Domains />} />
         <Route path="settings" element={<Settings />} />
       </Route>
-    </Routes>
   );
 }
 
